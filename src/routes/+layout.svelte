@@ -3,13 +3,9 @@
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
 	import AnimatedLink from '$lib/components/AnimatedLink.svelte';
 	import RcScout from '$lib/components/RCScout.svelte';
-	import SettingsDrawer from '$lib/components/SettingsDrawer/SettingsDrawer.svelte';
 	import '../app.css';
-	import { setFontStore } from '$lib/fonts.svelte';
 
 	let { children } = $props();
-
-	setFontStore();
 </script>
 
 <svelte:head>
@@ -28,12 +24,11 @@
 				<Github size={40} strokeWidth={1.5} />
 				<span class="sr-only">Github Repository</span>
 			</a>
-			<SettingsDrawer />
 		{/snippet}
 		{#snippet lead()}
 			<h1 class="h3">
 				<AnimatedLink href="/" class="dark:heading-font-color-dark heading-font-color"
-					>Font Bracket</AnimatedLink
+					>Item Bracket</AnimatedLink
 				>
 			</h1>
 		{/snippet}

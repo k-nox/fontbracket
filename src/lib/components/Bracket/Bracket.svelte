@@ -1,33 +1,51 @@
 <script lang="ts">
-	import { Tabs } from '@skeletonlabs/skeleton-svelte';
 	import type { BracketStore } from '$lib/bracket/bracket';
-	import type { MediaQuery } from 'svelte/reactivity';
-	import FancyBracket from './FancyBracket.svelte';
-	import SimpleBracket from './SimpleBracket.svelte';
 
 	interface Props {
 		bracket: BracketStore;
-		atLeastMedium: MediaQuery;
+		revision: number;
+		onchoose: (round: number, match: number, itemId: string) => void;
 	}
-
-	const { bracket, atLeastMedium }: Props = $props();
-
-	let group = $state('fancy');
+	let { bracket, onchoose, revision }: Props = $props();
+	const rounds = $derived.by(() => {
+		void revision;
+		return bracket.rounds.map((matches) => matches.map((match) => ({ ...match })));
+	});
 </script>
 
-<Tabs value={group} onValueChange={(e) => (group = e.value)} fluid>
-	{#snippet list()}
-		<Tabs.Control value="fancy">Fancy Bracket - Click Font Name to Highlight Path</Tabs.Control>
-		<Tabs.Control value="simple">Simple Bracket - Useful for Full Bracket Screenshots</Tabs.Control>
-	{/snippet}
-	{#snippet content()}
-		<Tabs.Panel value="fancy" base="flex w-full items-center justify-center">
-			{#key atLeastMedium.current}
-				<FancyBracket {bracket} atLeastMedium={atLeastMedium.current} />
-			{/key}
-		</Tabs.Panel>
-		<Tabs.Panel value="simple" base="flex w-full">
-			<SimpleBracket {bracket} />
-		</Tabs.Panel>
-	{/snippet}
-</Tabs>
+<section aria-label="Tournament bracket" class="overflow-x-auto pb-4">
+	<div class="flex min-w-max gap-6">
+		{#each rounds as matches, round (round)}
+			<section class="flex w-60 flex-col gap-4" aria-label={`Round ${round + 1}`}>
+				<h3 class="h4">{round === bracket.rounds.length - 1 ? 'Final' : `Round ${round + 1}`}</h3>
+				<div class="flex grow flex-col justify-around gap-4">
+					{#each matches as match, index (match.id)}
+						<div
+							class="border-surface-500 overflow-hidden rounded-lg border"
+							role="group"
+							aria-label={`Round ${round + 1}, match ${index + 1}`}
+						>
+							{#each match.sides as item, side (side)}
+								<button
+									type="button"
+									class="block min-h-12 w-full px-4 py-3 text-left break-words disabled:cursor-default {side ===
+									1
+										? 'border-surface-500 border-t'
+										: ''} {item && match.winner?.id === item.id
+										? 'preset-tonal-success font-bold'
+										: 'enabled:hover:preset-tonal-primary'}"
+									disabled={!match.sides[0] || !match.sides[1]}
+									aria-pressed={!!item && match.winner?.id === item.id}
+									onclick={() => item && onchoose(round, index, item.id)}
+								>
+									{item?.label ?? (round === 0 ? 'Bye' : 'TBD')}
+									{#if item && match.winner?.id === item.id}<span aria-label="Winner"> ✓</span>{/if}
+								</button>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/each}
+	</div>
+</section>

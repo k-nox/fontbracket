@@ -1,71 +1,82 @@
 <script lang="ts">
-	import { MediaQuery } from 'svelte/reactivity';
-	import Contestant from '$lib/components/Contestant.svelte';
 	import Bracket from '$lib/components/Bracket/Bracket.svelte';
-	import { BracketStore } from '$lib/bracket/bracket';
-	import { getFontStore, type Font } from '$lib/fonts.svelte';
-	import { Switch } from '@skeletonlabs/skeleton-svelte';
+	import { BracketStore, MAX_ITEMS, parseItems } from '$lib/bracket/bracket';
 
-	const atLeastMedium = new MediaQuery('width >= 48rem', true);
+	let input = $state('');
+	let randomize = $state(true);
+	let bracket = $state<BracketStore | null>(null);
+	let revision = $state(0);
+	let error = $state('');
+	const champion = $derived.by(() => {
+		void revision;
+		return bracket?.winner;
+	});
+	const labels = $derived(parseItems(input));
 
-	let fontStore = getFontStore();
-	let fonts: Font[] = $derived(
-		fontStore
-			.keys()
-			.filter((font) => fontStore.get(font))
-			.toArray()
-	);
+	function generate(event: SubmitEvent) {
+		event.preventDefault();
+		try {
+			bracket = new BracketStore(labels, randomize);
+			error = '';
+			revision++;
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : 'Unable to generate bracket.';
+		}
+	}
 
-	let bracket = $derived(new BracketStore(fonts));
-	let pairsIterator = $derived(bracket.pairs());
-
-	let next = $derived(pairsIterator.next());
-	let pair = $derived(typeof next.value !== 'string' ? next.value : null);
-	let winner = $derived(typeof next.value === 'string' ? next.value : null);
-
-	const choose = (font: string) => {
-		pair?.choose(font);
-		next = pairsIterator.next();
-	};
-
-	const reset = () => {
-		bracket = new BracketStore(fonts);
-	};
-
-	let showFontName = $state(false);
+	function choose(round: number, match: number, itemId: string) {
+		bracket?.choose(round, match, itemId);
+		revision++;
+	}
 </script>
 
-{#snippet contestant(font: string, side: 'left' | 'right')}
-	<Contestant {side} {showFontName} {font} onclick={() => choose(font)} />
-{/snippet}
+<svelte:head>
+	<title>Item Bracket — Build a tournament from your list</title>
+	<meta
+		name="description"
+		content="Paste a list of items, generate a tournament bracket, and choose your winners."
+	/>
+</svelte:head>
 
-<div class="flex w-full flex-col justify-center gap-4">
-	{#if winner}
-		<Bracket {bracket} {atLeastMedium} />
-	{:else if pair}
-		<label class="label flex items-center space-x-2">
-			<Switch
-				checked={showFontName}
-				onCheckedChange={(e: { checked: boolean }) => (showFontName = e.checked)}
-			></Switch>
-			<span class="label-text">Show Font Names</span>
-		</label>
-		<div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr]">
-			{@render contestant(pair.fonts[0], 'left')}
-			{#if atLeastMedium.current}
-				<span class="md:vr h-full"></span>
-			{:else}
-				<hr class="hr" />
-			{/if}
-			{@render contestant(pair.fonts[1], 'right')}
-		</div>
-	{:else}
-		<p>Not sure how you got here, but there's no valid fonts.</p>
+<div class="mx-auto flex max-w-7xl flex-col gap-6">
+	<div>
+		<h1 class="h2">Make a bracket for anything</h1>
+		<p>Enter your items, generate a bracket, and click the winner of each matchup.</p>
+	</div>
+	<form onsubmit={generate} class="flex max-w-xl flex-col gap-4">
+		<label for="items" class="label">Items — one per line</label>
+		<textarea
+			id="items"
+			class="textarea min-h-48"
+			bind:value={input}
+			placeholder="Pizza&#10;Tacos&#10;Sushi&#10;Pasta"
+			aria-describedby="items-help"
+			required
+		></textarea>
+		<p id="items-help" class="text-sm">
+			{labels.length} items · Enter 2–{MAX_ITEMS} items. Blank lines are ignored; duplicate names are
+			allowed.
+		</p>
+		<label class="flex items-center gap-2"
+			><input type="checkbox" bind:checked={randomize} /> Shuffle items before pairing</label
+		>
+		{#if error}<p role="alert" class="text-error-500">{error}</p>{/if}
+		<button type="submit" class="btn preset-filled-primary self-start"
+			>{bracket ? 'Generate new bracket' : 'Generate bracket'}</button
+		>
+		{#if bracket}<p class="text-sm">Generating a new bracket replaces the current results.</p>{/if}
+	</form>
+	{#if bracket}
+		<section class="space-y-4" aria-label="Your tournament">
+			<h2 class="h3">Your bracket · {bracket.items.length} items</h2>
+			<p>
+				Click an item to advance it. You can change a choice; affected later results will be
+				cleared. Byes advance automatically in the opening round.
+			</p>
+			<p aria-live="polite" class="text-success-500">
+				{champion ? `Champion: ${champion.label}` : 'Choose winners to complete your bracket.'}
+			</p>
+			<Bracket {bracket} {revision} onchoose={choose} />
+		</section>
 	{/if}
-
-	<button
-		type="button"
-		class="btn preset-outlined-error-500 hover:preset-tonal-error self-center"
-		onclick={reset}>Reset</button
-	>
 </div>
