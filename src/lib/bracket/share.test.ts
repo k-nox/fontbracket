@@ -22,7 +22,7 @@ function finish(bracket: BracketStore, side = 0) {
 }
 
 function snapshot(count = 5) {
-	const bracket = finish(new BracketStore(Array.from({ length: count }, (_, i) => `Film ${i}`)));
+	const bracket = finish(new BracketStore(Array.from({ length: count }, (_, i) => `Item ${i}`)));
 	return createSession(bracket);
 }
 
@@ -133,7 +133,7 @@ describe('URL brackets', () => {
 		}
 	});
 
-	it('keeps a 256-film, four-person bracket under the link limit', async () => {
+	it('keeps a 256-item, four-person bracket under the link limit', async () => {
 		let session = snapshot(256);
 		for (const name of ['Sam', 'Lee', 'Jo']) session = addPlayer(session, name).session;
 		const hash = await encodeSession(session);

@@ -1,8 +1,8 @@
-# Final Cut
+# Bracket
 
 A mobile-friendly SvelteKit single-elimination tournament builder adapted from Font Bracket.
 
-Paste 2–256 movies (or any other items), one per line, and generate the complete bracket immediately.
+Paste 2–256 items, one per line, and generate the complete bracket immediately.
 Blank lines are ignored; duplicate names and the literal name “BYE” are supported.
 Shuffle is enabled by default; disable it to pair items in their supplied order.
 Byes are allocated only in the opening round to fill the next power of two.
@@ -28,7 +28,7 @@ pnpm build
 ## Sharing and comparison
 
 Open **Share & compare**, set your name, and copy/share the link. A friend opens
-it, enters their name, and makes independent picks on the identical movie order.
+it, enters their name, and makes independent picks on the identical item order.
 They return their updated link. Paste it under **Link & returned results** to
 combine results. Up to four people can compare champions and round-by-round
 picks; agreement counts only matches both people decided, excluding automatic byes.
@@ -46,7 +46,7 @@ joining again. Links can be inspected or edited by anyone who has them.
 
 The URL format is versioned and bounded, validates winners against their actual
 matchups, preserves duplicate labels, and supports an uncompressed fallback for
-browsers without CompressionStream. Links above 60,000 characters and movie names
+browsers without CompressionStream. Links above 60,000 characters and item names
 over 500 characters are rejected. Very large links may exceed a messaging app's
-own limits; use fewer or shorter movie names. Compressed links require a browser
+own limits; use fewer or shorter item names. Compressed links require a browser
 with DecompressionStream support.

@@ -203,7 +203,7 @@
 
 	async function nativeShare() {
 		try {
-			await navigator.share({ title: 'Final Cut bracket', url: shareLink });
+			await navigator.share({ title: 'Bracket', url: shareLink });
 		} catch (cause) {
 			if (!(cause instanceof Error && cause.name === 'AbortError')) notice = 'Copy the link below.';
 		}
@@ -211,29 +211,29 @@
 </script>
 
 <svelte:head>
-	<title>Final Cut</title>
-	<meta name="description" content="Create a movie bracket." />
+	<title>Bracket</title>
+	<meta name="description" content="Create and share a bracket." />
 </svelte:head>
 
 <div class="workspace" class:playing={!!bracket}>
-	<div class="intro"><h1>Movie bracket</h1></div>
+	<div class="intro"><h1>Create a bracket</h1></div>
 	<details class="entry-panel" open={!session}>
 		<summary
-			><span>{session ? 'Edit movies' : 'Movies'}</span><span class="item-count"
-				>{labels.length} films <span aria-hidden="true">＋</span></span
+			><span>{session ? 'Edit items' : 'Items'}</span><span class="item-count"
+				>{labels.length} items <span aria-hidden="true">＋</span></span
 			></summary
 		>
 		<form onsubmit={generate}>
-			<label for="items">Movies — one per line</label>
+			<label for="items">Items — one per line</label>
 			<textarea
 				id="items"
 				bind:value={input}
-				placeholder="The Grand Budapest Hotel&#10;Spirited Away&#10;Before Sunrise&#10;The Truman Show"
+				placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
 				aria-describedby="items-help"
 				required
 			></textarea>
 			<p id="items-help" class="help-text">
-				2–{MAX_ITEMS} movies.
+				2–{MAX_ITEMS} items.
 			</p>
 			<div class="form-bottom">
 				<label class="checkbox-label"
@@ -326,11 +326,11 @@
 			<section class="tournament" aria-label="Your tournament">
 				<div class="tournament-title">
 					<h2>Your picks</h2>
-					<span class="item-count">{bracket.items.length} movies</span>
+					<span class="item-count">{bracket.items.length} items</span>
 				</div>
 				<div aria-live="polite" class:champion={!!champion} class="tournament-status">
 					{#if champion}<p>Champion: {champion.label}</p>{:else}<p>
-							Tap a movie to advance it.
+							Tap an item to advance it.
 						</p>{/if}
 				</div>
 				{#key generation}<Bracket {bracket} {revision} onchoose={choose} />{/key}

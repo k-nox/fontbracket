@@ -18,7 +18,7 @@ afterEach(() => {
 describe('/+page.svelte', () => {
 	test('generates a full bracket and selects a champion safely', async () => {
 		render(Page);
-		await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
+		await fireEvent.input(screen.getByLabelText('Items — one per line'), {
 			target: { value: '<img src=x onerror=alert(1)>\nBYE' }
 		});
 		await fireEvent.click(screen.getByLabelText('Shuffle'));
@@ -33,7 +33,7 @@ describe('/+page.svelte', () => {
 
 	test('explains invalid item counts', async () => {
 		render(Page);
-		await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
+		await fireEvent.input(screen.getByLabelText('Items — one per line'), {
 			target: { value: 'Only one' }
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Generate bracket' }));
@@ -43,7 +43,7 @@ describe('/+page.svelte', () => {
 
 test('uses one round at a time and allows browsing the complete bracket', async () => {
 	render(Page);
-	await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
+	await fireEvent.input(screen.getByLabelText('Items — one per line'), {
 		target: { value: 'A\nB\nC\nD' }
 	});
 	await fireEvent.click(screen.getByLabelText('Shuffle'));
@@ -63,7 +63,7 @@ test('uses one round at a time and allows browsing the complete bracket', async 
 
 test('shares a host bracket, adds independent guest picks, and combines the returned link', async () => {
 	const host = render(Page);
-	await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
+	await fireEvent.input(screen.getByLabelText('Items — one per line'), {
 		target: { value: 'A\nB' }
 	});
 	await fireEvent.click(screen.getByLabelText('Shuffle'));

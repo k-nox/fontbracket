@@ -188,7 +188,7 @@ export async function encodeSession(session: SharedBracket): Promise<string> {
 	const json = JSON.stringify(validateSession(session));
 	const source = new TextEncoder().encode(json);
 	if (source.length > MAX_JSON_BYTES)
-		throw new Error('Link too large. Use fewer or shorter movie names.');
+		throw new Error('Link too large. Use fewer or shorter item names.');
 	let bytes: Uint8Array = source;
 	let format = 'j';
 	if (typeof CompressionStream !== 'undefined') {
@@ -201,7 +201,7 @@ export async function encodeSession(session: SharedBracket): Promise<string> {
 	for (const byte of bytes) binary += String.fromCharCode(byte);
 	const hash =
 		'#b=' + format + btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-	if (hash.length > MAX_HASH) throw new Error('Link too large. Use fewer or shorter movie names.');
+	if (hash.length > MAX_HASH) throw new Error('Link too large. Use fewer or shorter item names.');
 	return hash;
 }
 
