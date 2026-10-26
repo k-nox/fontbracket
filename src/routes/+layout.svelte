@@ -19,7 +19,7 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content={light ? '#f5f0ff' : '#241a35'} />
+	<meta name="theme-color" content={light ? '#faf4ed' : '#191724'} />
 	<script>
 		(() => {
 			let mode;
