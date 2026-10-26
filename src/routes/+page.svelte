@@ -1,71 +1,398 @@
 <script lang="ts">
-	import { MediaQuery } from 'svelte/reactivity';
-	import Contestant from '$lib/components/Contestant.svelte';
-	import Bracket from '$lib/components/Bracket/Bracket.svelte';
-	import { BracketStore } from '$lib/bracket/bracket';
-	import { getFontStore, type Font } from '$lib/fonts.svelte';
-	import { Switch } from '@skeletonlabs/skeleton-svelte';
+	import { onMount } from 'svelte';
+	import Bracket from '#lib/components/Bracket/Bracket.svelte';
+	import Comparison from '#lib/components/Bracket/Comparison.svelte';
+	import { BracketStore, MAX_ITEMS, parseItems } from '#lib/bracket/bracket.ts';
+	import {
+		addPlayer,
+		capturePicks,
+		createSession,
+		decodeSession,
+		encodeSession,
+		finalizeSession,
+		MAX_PLAYERS,
+		mergeSessions,
+		restoreBracket,
+		type SharedBracket
+	} from '#lib/bracket/share.ts';
 
-	const atLeastMedium = new MediaQuery('width >= 48rem', true);
-
-	let fontStore = getFontStore();
-	let fonts: Font[] = $derived(
-		fontStore
-			.keys()
-			.filter((font) => fontStore.get(font))
-			.toArray()
+	let input = $state('');
+	let randomize = $state(true);
+	let bracket = $state<BracketStore | null>(null);
+	let session = $state<SharedBracket | null>(null);
+	let activeId = $state<string | null>(null);
+	let revision = $state(0);
+	let generation = $state(0);
+	let error = $state('');
+	let shareError = $state('');
+	let notice = $state('');
+	let joinName = $state('');
+	let importLink = $state('');
+	let shareLink = $state('');
+	let encoding = $state(false);
+	let loading = $state(false);
+	let canShare = $state(false);
+	let saveVersion = 0;
+	let alive = true;
+	let importVersion = 0;
+	const player = $derived(session?.players.find((person) => person.id === activeId));
+	const champion = $derived.by(() => {
+		void revision;
+		return bracket?.winner;
+	});
+	const labels = $derived(parseItems(input));
+	const finishedCount = $derived(
+		session?.players.filter((person) => person.picks.at(-1) != null).length ?? 0
 	);
+	const message = (cause: unknown) =>
+		cause instanceof Error ? cause.message : 'Unable to open bracket.';
 
-	let bracket = $derived(new BracketStore(fonts));
-	let pairsIterator = $derived(bracket.pairs());
+	function rememberIdentity(sessionId: string, playerId: string) {
+		try {
+			localStorage.setItem(`final-cut-player:${sessionId}`, playerId);
+		} catch {
+			/* Optional local identity only. */
+		}
+	}
 
-	let next = $derived(pairsIterator.next());
-	let pair = $derived(typeof next.value !== 'string' ? next.value : null);
-	let winner = $derived(typeof next.value === 'string' ? next.value : null);
+	function useSession(next: SharedBracket, ownId: string | null) {
+		session = next;
+		encoding = false;
+		importLink = '';
+		activeId = ownId;
+		const own = next.players.find((person) => person.id === ownId);
+		bracket = own ? restoreBracket(next.movies, own.picks) : null;
+		input = next.movies.join('\n');
+		revision++;
+		generation++;
+		error = '';
+		shareError = '';
+	}
 
-	const choose = (font: string) => {
-		pair?.choose(font);
-		next = pairsIterator.next();
-	};
+	async function saveUrl() {
+		if (!session) return;
+		const version = ++saveVersion;
+		encoding = true;
+		shareError = '';
+		try {
+			const hash = await encodeSession(session);
+			if (!alive || version !== saveVersion) return;
+			const url = window.location.origin + window.location.pathname + hash;
+			window.history.replaceState(window.history.state, '', url);
+			shareLink = url;
+		} catch (cause) {
+			if (alive && version === saveVersion) {
+				shareError = message(cause);
+				shareLink = '';
+			}
+		} finally {
+			if (alive && version === saveVersion) encoding = false;
+		}
+	}
 
-	const reset = () => {
-		bracket = new BracketStore(fonts);
-	};
+	onMount(() => {
+		canShare = typeof navigator.share === 'function';
+		async function openHash() {
+			const version = ++importVersion;
+			if (!window.location.hash) return;
+			loading = true;
+			++saveVersion;
+			try {
+				const next = await decodeSession(window.location.href);
+				if (!alive || version !== importVersion) return;
+				let ownId = null;
+				try {
+					ownId = localStorage.getItem(`final-cut-player:${next.id}`);
+				} catch {
+					/* Optional. */
+				}
+				useSession(next, ownId);
+				shareLink = window.location.href;
+			} catch (cause) {
+				if (alive && version === importVersion) error = message(cause);
+			} finally {
+				if (alive && version === importVersion) loading = false;
+			}
+		}
+		void openHash();
+		window.addEventListener('hashchange', openHash);
+		return () => {
+			alive = false;
+			++saveVersion;
+			++importVersion;
+			window.removeEventListener('hashchange', openHash);
+		};
+	});
 
-	let showFontName = $state(false);
+	function generate(event: SubmitEvent) {
+		event.preventDefault();
+		try {
+			++importVersion;
+			loading = false;
+			const next = createSession(new BracketStore(labels, randomize));
+			rememberIdentity(next.id, next.players[0].id);
+			useSession(next, next.players[0].id);
+			notice = '';
+			void saveUrl();
+		} catch (cause) {
+			error = message(cause);
+		}
+	}
+
+	function choose(round: number, match: number, itemId: string) {
+		if (!bracket || !session || !activeId || session.complete) return;
+		bracket.choose(round, match, itemId);
+		session = {
+			...session,
+			players: session.players.map((person) =>
+				person.id === activeId
+					? { ...person, revision: person.revision + 1, picks: capturePicks(bracket!) }
+					: person
+			)
+		};
+		revision++;
+		notice = '';
+		void saveUrl();
+	}
+
+	function rename(name: string) {
+		if (!session || !activeId || !name.trim() || session.complete) return;
+		session = {
+			...session,
+			players: session.players.map((person) =>
+				person.id === activeId
+					? { ...person, name: name.trim(), revision: person.revision + 1 }
+					: person
+			)
+		};
+		void saveUrl();
+	}
+
+	function join(event: SubmitEvent) {
+		event.preventDefault();
+		if (!session) return;
+		try {
+			const next = addPlayer(session, joinName);
+			rememberIdentity(next.session.id, next.player.id);
+			useSession(next.session, next.player.id);
+			void saveUrl();
+		} catch (cause) {
+			shareError = message(cause);
+		}
+	}
+
+	async function combine(event: SubmitEvent) {
+		event.preventDefault();
+		if (!session) return;
+		try {
+			const incoming = await decodeSession(importLink);
+			if (!alive || !session) return;
+			session = mergeSessions(session, incoming, activeId);
+			importLink = '';
+			notice = 'Results combined.';
+			await saveUrl();
+		} catch (cause) {
+			shareError = message(cause);
+		}
+	}
+
+	async function copyLink() {
+		try {
+			await navigator.clipboard.writeText(shareLink);
+			notice = session?.complete ? 'Final results link copied.' : 'Link copied.';
+		} catch {
+			notice = 'Copy the link below.';
+		}
+	}
+
+	async function completeGroup() {
+		if (!session || !player || session.complete) return;
+		const previous = session;
+		try {
+			session = finalizeSession(session);
+			await saveUrl();
+			if (!session || session.id !== previous.id || !session.complete) return;
+			if (shareError) {
+				session = previous;
+				return;
+			}
+			await copyLink();
+		} catch (cause) {
+			shareError = message(cause);
+		}
+	}
+
+	async function nativeShare() {
+		try {
+			await navigator.share({ title: 'knox’s super cool bracket maker', url: shareLink });
+		} catch (cause) {
+			if (!(cause instanceof Error && cause.name === 'AbortError')) notice = 'Copy the link below.';
+		}
+	}
 </script>
 
-{#snippet contestant(font: string, side: 'left' | 'right')}
-	<Contestant {side} {showFontName} {font} onclick={() => choose(font)} />
-{/snippet}
+<svelte:head>
+	<title>knox’s super cool bracket maker</title>
+	<meta name="description" content="Create and share a bracket." />
+</svelte:head>
 
-<div class="flex w-full flex-col justify-center gap-4">
-	{#if winner}
-		<Bracket {bracket} {atLeastMedium} />
-	{:else if pair}
-		<label class="label flex items-center space-x-2">
-			<Switch
-				checked={showFontName}
-				onCheckedChange={(e: { checked: boolean }) => (showFontName = e.checked)}
-			></Switch>
-			<span class="label-text">Show Font Names</span>
-		</label>
-		<div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr]">
-			{@render contestant(pair.fonts[0], 'left')}
-			{#if atLeastMedium.current}
-				<span class="md:vr h-full"></span>
-			{:else}
-				<hr class="hr" />
-			{/if}
-			{@render contestant(pair.fonts[1], 'right')}
-		</div>
-	{:else}
-		<p>Not sure how you got here, but there's no valid fonts.</p>
+<div class="workspace" class:playing={!!bracket}>
+	<div class="intro"><h1>make a bracket</h1></div>
+	<details class="entry-panel" open={!session}>
+		<summary
+			><span>{session ? 'Edit items' : 'Items'}</span><span class="item-count"
+				>{labels.length} items <span aria-hidden="true">＋</span></span
+			></summary
+		>
+		<form onsubmit={generate}>
+			<label for="items">Items — one per line</label>
+			<textarea
+				id="items"
+				bind:value={input}
+				placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
+				aria-describedby="items-help"
+				required></textarea>
+			<p id="items-help" class="help-text">
+				2–{MAX_ITEMS} items.
+			</p>
+			<div class="form-bottom">
+				<label class="checkbox-label"
+					><input type="checkbox" bind:checked={randomize} /> Shuffle</label
+				>
+				<button type="submit" class="primary-button"
+					>{session ? 'Generate new bracket' : 'Generate bracket'}
+					<span aria-hidden="true">↗</span></button
+				>
+			</div>
+
+			{#if session}<p class="help-text">Starts a new bracket for everyone.</p>{/if}
+		</form>
+	</details>
+	{#if loading}<p role="status">Loading bracket…</p>{/if}
+	{#if error}<p role="alert" class="error">{error}</p>{/if}
+	{#if session}
+		<details class="sharing" open={!player || session.complete}>
+			<summary
+				><span>Share &amp; compare</span><span class="item-count"
+					>{session.players.length}/{MAX_PLAYERS} people</span
+				></summary
+			>
+			<div class="sharing-content">
+				{#if session.complete}<p class="help-text">Final results are read-only.</p>
+				{:else if player}
+					<label class="name-label" for="player-name">Your name</label>
+					<input
+						id="player-name"
+						class="text-input"
+						value={player.name}
+						maxlength="40"
+						onchange={(event) => rename(event.currentTarget.value)}
+					/>
+				{:else if session.players.length < MAX_PLAYERS}
+					<form onsubmit={join} class="inline-form join-form">
+						<label class="name-label" for="join-name">Your name</label>
+						<input
+							id="join-name"
+							class="text-input"
+							bind:value={joinName}
+							maxlength="40"
+							required
+						/>
+						<button class="primary-button" type="submit">Make my picks</button>
+					</form>
+				{:else}<p class="help-text">This bracket already has four people.</p>{/if}
+				<div class="share-actions">
+					<button
+						class="secondary-button"
+						type="button"
+						disabled={encoding || !shareLink}
+						onclick={copyLink}>Copy link</button
+					>
+					{#if canShare}<button
+							class="secondary-button"
+							type="button"
+							disabled={encoding || !shareLink}
+							onclick={nativeShare}>Share</button
+						>{/if}
+				</div>
+				<details class="link-details">
+					<summary>Link & returned results</summary>
+					<label class="name-label" for="share-link">Bracket link</label>
+					<textarea
+						id="share-link"
+						class="link-input"
+						readonly
+						value={encoding ? 'Updating link…' : shareLink}
+						onfocus={(event) => event.currentTarget.select()}></textarea>
+					{#if !session.complete}<form class="import-form" onsubmit={combine}>
+							<label class="name-label" for="returned-link">Paste a friend's result link</label>
+							<textarea id="returned-link" class="link-input" bind:value={importLink} required
+							></textarea>
+							<button class="secondary-button" type="submit">Combine results</button>
+						</form>{/if}
+				</details>
+				{#if !session.complete}<p class="help-text">
+						Send your link. Friends make their picks and return a link. Paste returned links to
+						compare up to four people.
+					</p>{/if}
+				<p class="help-text">Results stay in the link and your browser. No server storage.</p>
+				{#if notice}<p role="status" class="help-text">{notice}</p>{/if}
+				{#if shareError}<p role="alert" class="error">{shareError}</p>{/if}
+			</div>
+		</details>
+		{#if session.complete}
+			<section class="completion-panel" aria-label="Final results">
+				<h2>complete ✓</h2>
+				<p>All results unlocked. Send this link to everyone.</p>
+				<div class="share-actions">
+					<button
+						class="primary-button"
+						type="button"
+						disabled={encoding || !shareLink}
+						onclick={copyLink}>Copy final results link</button
+					>{#if canShare}<button
+							class="secondary-button"
+							type="button"
+							disabled={encoding || !shareLink}
+							onclick={nativeShare}>Share final results</button
+						>{/if}
+				</div>
+			</section>
+		{/if}
+		{#if bracket && !session.complete}
+			<section class="tournament" aria-label="Your tournament">
+				<div class="tournament-title">
+					<h2>Your picks</h2>
+					<span class="item-count">{bracket.items.length} items</span>
+				</div>
+				<div aria-live="polite" class:champion={!!champion} class="tournament-status">
+					{#if champion}<p>Champion: {champion.label}</p>{:else}<p>
+							Tap an item to advance it.
+						</p>{/if}
+				</div>
+				{#key generation}<Bracket {bracket} {revision} onchoose={choose} />{/key}
+				<p class="help-text tournament-help">Changing a pick resets affected results.</p>
+				<section class="completion-panel" aria-label="Complete bracket">
+					<p>{finishedCount}/{session.players.length} people finished.</p>
+					<button
+						class="primary-button"
+						type="button"
+						disabled={encoding || finishedCount !== session.players.length}
+						onclick={completeGroup}>Mark complete &amp; share results</button
+					>
+					<p class="help-text">
+						Unlocks results for everyone in a read-only link. Import all results first.
+					</p>
+				</section>
+			</section>
+		{/if}
+		{#if session.complete || session.players.length > 1 || !player}
+			{#if session.complete || (player && champion)}{#key session.id}<Comparison {session} />{/key}
+			{:else}<section class="locked-results" aria-label="Locked results">
+					<span class="lock-icon" aria-hidden="true">🔒</span>
+					<h2>friends’ picks are locked</h2>
+					<p>Finish your bracket to unlock the table and full brackets.</p>
+				</section>{/if}
+		{/if}
 	{/if}
-
-	<button
-		type="button"
-		class="btn preset-outlined-error-500 hover:preset-tonal-error self-center"
-		onclick={reset}>Reset</button
-	>
 </div>
