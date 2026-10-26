@@ -33,27 +33,16 @@
 </script>
 
 <svelte:head>
-	<title>Final Cut — Every movie. One favorite.</title>
-	<meta
-		name="description"
-		content="Turn your watchlist into a movie tournament. Pick your favorites, one matchup at a time."
-	/>
+	<title>Final Cut</title>
+	<meta name="description" content="Create a movie bracket." />
 	<meta name="theme-color" content="#171719" />
 </svelte:head>
 
 <div class="workspace" class:playing={!!bracket}>
-	<div class="intro">
-		<p class="eyebrow">FOR THE LOVE OF FILM</p>
-		<h1>{bracket ? 'The screening starts here.' : 'Every movie. One favorite.'}</h1>
-		<p class="intro-copy">
-			{bracket
-				? 'Two films. One tough call. Tap your pick and let the best movie rise.'
-				: 'Your cult classics, comfort rewatches, and five-star favorites. Put them head to head. Only one makes the final cut.'}
-		</p>
-	</div>
+	<div class="intro"><h1>Movie bracket</h1></div>
 	<details class="entry-panel" open={!bracket}>
 		<summary
-			><span>{bracket ? 'Edit your movies' : 'Cast your contenders'}</span><span class="item-count"
+			><span>{bracket ? 'Edit movies' : 'Movies'}</span><span class="item-count"
 				>{labels.length} films <span aria-hidden="true">＋</span></span
 			></summary
 		>
@@ -67,11 +56,11 @@
 				required
 			></textarea>
 			<p id="items-help" class="help-text">
-				Enter 2–{MAX_ITEMS} movies. Blank lines are ignored; duplicate names are allowed.
+				2–{MAX_ITEMS} movies.
 			</p>
 			<div class="form-bottom">
 				<label class="checkbox-label"
-					><input type="checkbox" bind:checked={randomize} /> Shuffle movies before pairing</label
+					><input type="checkbox" bind:checked={randomize} /> Shuffle</label
 				>
 				<button type="submit" class="primary-button"
 					>{bracket ? 'Generate new bracket' : 'Generate bracket'}
@@ -79,28 +68,21 @@
 				>
 			</div>
 			{#if error}<p role="alert" class="error">{error}</p>{/if}
-			{#if bracket}<p class="help-text">A new bracket replaces your current results.</p>{/if}
+			{#if bracket}<p class="help-text">Replaces current results.</p>{/if}
 		</form>
 	</details>
 	{#if bracket}
 		<section class="tournament" aria-label="Your tournament">
 			<div class="tournament-title">
-				<h2>The tournament</h2>
-				<span class="item-count">{bracket.items.length} contenders</span>
+				<h2>Bracket</h2>
+				<span class="item-count">{bracket.items.length} movies</span>
 			</div>
 			<div aria-live="polite" class:champion={!!champion} class="tournament-status">
-				{#if champion}<span class="eyebrow">BEST PICTURE, ACCORDING TO YOU</span>
-					<p>Champion: {champion.label}</p>{:else}<p>
-						Choose winners to complete your bracket.
-					</p>{/if}
+				{#if champion}
+					<p>Champion: {champion.label}</p>{:else}<p>Tap a movie to advance it.</p>{/if}
 			</div>
 			{#key generation}<Bracket {bracket} {revision} onchoose={choose} />{/key}
-			<p class="help-text tournament-help">
-				Changed your mind? Pick again. Affected later results will reset. Byes advance
-				automatically.
-			</p>
+			<p class="help-text tournament-help">Changing a pick resets affected results.</p>
 		</section>
-	{:else}<p class="opening-note">
-			<span aria-hidden="true">✧</span> No critics. No scores. Just your favorites.
-		</p>{/if}
+	{/if}
 </div>

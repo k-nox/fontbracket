@@ -9,7 +9,7 @@ describe('/+page.svelte', () => {
 		await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
 			target: { value: '<img src=x onerror=alert(1)>\nBYE' }
 		});
-		await fireEvent.click(screen.getByLabelText('Shuffle movies before pairing'));
+		await fireEvent.click(screen.getByLabelText('Shuffle'));
 		await fireEvent.click(screen.getByRole('button', { name: 'Generate bracket' }));
 		expect(screen.getByRole('region', { name: 'Tournament bracket' })).toBeInTheDocument();
 		expect(document.querySelector('img')).toBeNull();
@@ -34,7 +34,7 @@ test('uses one round at a time and allows browsing the complete bracket', async 
 	await fireEvent.input(screen.getByLabelText('Movies — one per line'), {
 		target: { value: 'A\nB\nC\nD' }
 	});
-	await fireEvent.click(screen.getByLabelText('Shuffle movies before pairing'));
+	await fireEvent.click(screen.getByLabelText('Shuffle'));
 	await fireEvent.click(screen.getByRole('button', { name: 'Generate bracket' }));
 	expect(screen.getByRole('region', { name: 'Round 1' })).toBeInTheDocument();
 	expect(screen.queryByRole('region', { name: 'Round 2' })).not.toBeInTheDocument();

@@ -56,7 +56,4 @@
 		</div>
 	</header>
 	<main>{@render children()}</main>
-	<footer class="site-footer">
-		<span>A little movie-night rivalry.</span><span>Your taste. The final say.</span>
-	</footer>
 </div>

@@ -22,14 +22,14 @@
 
 <section aria-label="Tournament bracket" class="bracket">
 	<div class="bracket-toolbar">
-		<p class="eyebrow">THE MATCHUPS</p>
+		<p class="eyebrow">Matchups</p>
 		<button
 			type="button"
 			class="text-button"
 			aria-pressed={overview}
 			onclick={() => (overview = !overview)}
 		>
-			{overview ? 'One round at a time' : 'View full bracket'}
+			{overview ? 'Round view' : 'View full bracket'}
 		</button>
 	</div>
 	{#if !overview}
@@ -112,9 +112,7 @@
 					class="secondary-button"
 					onclick={() => selected++}>{complete ? 'Continue' : 'Next round'} →</button
 				>
-			{:else}<span class="final-note"
-					>{complete ? 'A champion is crowned.' : 'One last choice.'}</span
-				>{/if}
+			{/if}
 		</div>
 	{/if}
 </section>
