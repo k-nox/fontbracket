@@ -6,6 +6,7 @@
 	let randomize = $state(true);
 	let bracket = $state<BracketStore | null>(null);
 	let revision = $state(0);
+	let generation = $state(0);
 	let error = $state('');
 	const champion = $derived.by(() => {
 		void revision;
@@ -19,6 +20,7 @@
 			bracket = new BracketStore(labels, randomize);
 			error = '';
 			revision++;
+			generation++;
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to generate bracket.';
 		}
@@ -31,52 +33,74 @@
 </script>
 
 <svelte:head>
-	<title>Item Bracket — Build a tournament from your list</title>
+	<title>Final Cut — Every movie. One favorite.</title>
 	<meta
 		name="description"
-		content="Paste a list of items, generate a tournament bracket, and choose your winners."
+		content="Turn your watchlist into a movie tournament. Pick your favorites, one matchup at a time."
 	/>
+	<meta name="theme-color" content="#171719" />
 </svelte:head>
 
-<div class="mx-auto flex max-w-7xl flex-col gap-6">
-	<div>
-		<h1 class="h2">Make a bracket for anything</h1>
-		<p>Enter your items, generate a bracket, and click the winner of each matchup.</p>
-	</div>
-	<form onsubmit={generate} class="flex max-w-xl flex-col gap-4">
-		<label for="items" class="label">Items — one per line</label>
-		<textarea
-			id="items"
-			class="textarea min-h-48"
-			bind:value={input}
-			placeholder="Pizza&#10;Tacos&#10;Sushi&#10;Pasta"
-			aria-describedby="items-help"
-			required
-		></textarea>
-		<p id="items-help" class="text-sm">
-			{labels.length} items · Enter 2–{MAX_ITEMS} items. Blank lines are ignored; duplicate names are
-			allowed.
+<div class="workspace" class:playing={!!bracket}>
+	<div class="intro">
+		<p class="eyebrow">FOR THE LOVE OF FILM</p>
+		<h1>{bracket ? 'The screening starts here.' : 'Every movie. One favorite.'}</h1>
+		<p class="intro-copy">
+			{bracket
+				? 'Two films. One tough call. Tap your pick and let the best movie rise.'
+				: 'Your cult classics, comfort rewatches, and five-star favorites. Put them head to head. Only one makes the final cut.'}
 		</p>
-		<label class="flex items-center gap-2"
-			><input type="checkbox" bind:checked={randomize} /> Shuffle items before pairing</label
+	</div>
+	<details class="entry-panel" open={!bracket}>
+		<summary
+			><span>{bracket ? 'Edit your movies' : 'Cast your contenders'}</span><span class="item-count"
+				>{labels.length} films <span aria-hidden="true">＋</span></span
+			></summary
 		>
-		{#if error}<p role="alert" class="text-error-500">{error}</p>{/if}
-		<button type="submit" class="btn preset-filled-primary self-start"
-			>{bracket ? 'Generate new bracket' : 'Generate bracket'}</button
-		>
-		{#if bracket}<p class="text-sm">Generating a new bracket replaces the current results.</p>{/if}
-	</form>
+		<form onsubmit={generate}>
+			<label for="items">Movies — one per line</label>
+			<textarea
+				id="items"
+				bind:value={input}
+				placeholder="The Grand Budapest Hotel&#10;Spirited Away&#10;Before Sunrise&#10;The Truman Show"
+				aria-describedby="items-help"
+				required
+			></textarea>
+			<p id="items-help" class="help-text">
+				Enter 2–{MAX_ITEMS} movies. Blank lines are ignored; duplicate names are allowed.
+			</p>
+			<div class="form-bottom">
+				<label class="checkbox-label"
+					><input type="checkbox" bind:checked={randomize} /> Shuffle movies before pairing</label
+				>
+				<button type="submit" class="primary-button"
+					>{bracket ? 'Generate new bracket' : 'Generate bracket'}
+					<span aria-hidden="true">↗</span></button
+				>
+			</div>
+			{#if error}<p role="alert" class="error">{error}</p>{/if}
+			{#if bracket}<p class="help-text">A new bracket replaces your current results.</p>{/if}
+		</form>
+	</details>
 	{#if bracket}
-		<section class="space-y-4" aria-label="Your tournament">
-			<h2 class="h3">Your bracket · {bracket.items.length} items</h2>
-			<p>
-				Click an item to advance it. You can change a choice; affected later results will be
-				cleared. Byes advance automatically in the opening round.
+		<section class="tournament" aria-label="Your tournament">
+			<div class="tournament-title">
+				<h2>The tournament</h2>
+				<span class="item-count">{bracket.items.length} contenders</span>
+			</div>
+			<div aria-live="polite" class:champion={!!champion} class="tournament-status">
+				{#if champion}<span class="eyebrow">BEST PICTURE, ACCORDING TO YOU</span>
+					<p>Champion: {champion.label}</p>{:else}<p>
+						Choose winners to complete your bracket.
+					</p>{/if}
+			</div>
+			{#key generation}<Bracket {bracket} {revision} onchoose={choose} />{/key}
+			<p class="help-text tournament-help">
+				Changed your mind? Pick again. Affected later results will reset. Byes advance
+				automatically.
 			</p>
-			<p aria-live="polite" class="text-success-500">
-				{champion ? `Champion: ${champion.label}` : 'Choose winners to complete your bracket.'}
-			</p>
-			<Bracket {bracket} {revision} onchoose={choose} />
 		</section>
-	{/if}
+	{:else}<p class="opening-note">
+			<span aria-hidden="true">✧</span> No critics. No scores. Just your favorites.
+		</p>{/if}
 </div>
