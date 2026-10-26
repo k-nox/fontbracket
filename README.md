@@ -1,4 +1,4 @@
-# Bracket
+# knox’s super cool bracket maker
 
 A mobile-friendly SvelteKit single-elimination tournament builder adapted from Font Bracket.
 
@@ -10,7 +10,7 @@ Click contestants to advance them. Changing an earlier winner clears affected
 later results while preserving unrelated matches. Generating again replaces the
 current tournament. Picks are saved in the URL fragment after every change; keep the link to reopen them.
 
-The mobile layout shows one round at a time, with previous/next controls and an optional full-bracket overview. The input panel collapses after generation. A header switch toggles Rosé Pine-inspired light and dark palettes, defaults to the system preference, and remembers the choice in browser storage when available.
+The mobile layout shows one round at a time, with previous/next controls and an optional full-bracket overview. The input panel collapses after generation. A header switch toggles playful light and dark palettes, defaults to the system preference, and remembers the choice in browser storage when available.
 
 Labels are rendered as text, never HTML. The tournament engine in
 `src/lib/bracket/bracket.ts` has no font or UI dependencies.
@@ -50,3 +50,19 @@ browsers without CompressionStream. Links above 60,000 characters and item names
 over 500 characters are rejected. Very large links may exceed a messaging app's
 own limits; use fewer or shorter item names. Compressed links require a browser
 with DecompressionStream support.
+
+## Appearance and spoilers
+
+The interface uses a pickle logo, a lowercase name, and Comic Sans where installed.
+A bundled OFL-licensed Comic Neue fallback keeps the comic style on other devices
+without third-party font requests (license: `static/fonts/OFL.txt`).
+
+Friends’ champions, agreements, tables, and graphic brackets are not rendered
+until your own bracket is complete. Changing a pick that clears the final locks
+results again. Unjoined visitors cannot view group results, including full groups.
+This is a browser-side spoiler lock, not cryptographic access control: the URL
+contains all participant snapshots and can be decoded outside the app.
+
+Once unlocked, switch between the table and a read-only full-bracket diagram for
+any participant. Diagrams show match connections and highlight the champion’s
+path, with zoom and scrolling for larger brackets.

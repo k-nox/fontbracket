@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, test, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
-import { decodeSession } from '$lib/bracket/share';
+import {
+	addPlayer,
+	capturePicks,
+	createSession,
+	decodeSession,
+	encodeSession
+} from '$lib/bracket/share';
+import { BracketStore } from '$lib/bracket/bracket';
 import Page from './+page.svelte';
 
 beforeEach(() => {
@@ -84,8 +91,11 @@ test('shares a host bracket, adds independent guest picks, and combines the retu
 	await waitFor(() =>
 		expect(screen.getByRole('button', { name: 'Make my picks' })).toBeInTheDocument()
 	);
+	expect(screen.queryByRole('region', { name: 'Compare picks' })).not.toBeInTheDocument();
+	expect(screen.getByRole('region', { name: 'Locked results' })).toBeInTheDocument();
 	await fireEvent.input(screen.getByLabelText('Your name'), { target: { value: 'Sam' } });
 	await fireEvent.click(screen.getByRole('button', { name: 'Make my picks' }));
+	expect(screen.queryByRole('region', { name: 'Compare picks' })).not.toBeInTheDocument();
 	await fireEvent.click(screen.getByRole('button', { name: 'B' }));
 	await waitFor(() => expect(readLink()).not.toBe(hostLink));
 	const returnedLink = readLink();
@@ -107,4 +117,53 @@ test('shares a host bracket, adds independent guest picks, and combines the retu
 	expect(comparison.getByRole('cell', { name: 'A' })).toBeInTheDocument();
 	expect(comparison.getByRole('cell', { name: 'B' })).toBeInTheDocument();
 	expect(screen.getByRole('button', { name: 'A Winner' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('unlocks friends’ full graphics after completion and re-locks when an earlier change clears the final', async () => {
+	const own = new BracketStore(['A', 'B', 'C', 'D'], false);
+	own.choose(0, 0, own.items[0].id);
+	own.choose(0, 1, own.items[2].id);
+	own.choose(1, 0, own.items[0].id);
+	const session = addPlayer(createSession(own), 'Sam').session;
+	const friend = new BracketStore(session.movies, false);
+	friend.choose(0, 0, friend.items[1].id);
+	friend.choose(0, 1, friend.items[3].id);
+	friend.choose(1, 0, friend.items[3].id);
+	session.players[1].picks = capturePicks(friend);
+	localStorage.setItem(`final-cut-player:${session.id}`, session.players[0].id);
+	window.history.replaceState({}, '', await encodeSession(session));
+	render(Page);
+	await waitFor(() =>
+		expect(screen.getByRole('region', { name: 'Compare picks' })).toBeInTheDocument()
+	);
+	await fireEvent.click(screen.getByRole('button', { name: 'Brackets' }));
+	await fireEvent.change(screen.getByLabelText('Whose bracket'), { target: { value: '1' } });
+	const graph = screen.getByRole('img', { name: "Sam's full bracket" });
+	expect(graph).toBeInTheDocument();
+	expect(within(graph).queryByRole('button')).not.toBeInTheDocument();
+	expect(graph.querySelectorAll('path')).toHaveLength(3);
+	expect(graph.querySelectorAll('.graph-winner')).toHaveLength(3);
+	expect(screen.queryByRole('table')).not.toBeInTheDocument();
+	await fireEvent.click(screen.getByRole('button', { name: 'B' }));
+	expect(screen.queryByRole('region', { name: 'Compare picks' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('img', { name: "Sam's full bracket" })).not.toBeInTheDocument();
+	expect(screen.getByRole('region', { name: 'Locked results' })).toBeInTheDocument();
+	await fireEvent.click(screen.getByRole('button', { name: 'Continue →' }));
+	await fireEvent.click(screen.getByRole('button', { name: 'B' }));
+	expect(screen.getByRole('table')).toBeInTheDocument();
+});
+
+test('does not let an unjoined visitor see results of a full four-person group', async () => {
+	const bracket = new BracketStore(['A', 'B'], false);
+	bracket.choose(0, 0, bracket.items[0].id);
+	let session = createSession(bracket);
+	for (const name of ['Sam', 'Lee', 'Jo']) session = addPlayer(session, name).session;
+	window.history.replaceState({}, '', await encodeSession(session));
+	render(Page);
+	await waitFor(() =>
+		expect(screen.getByRole('region', { name: 'Locked results' })).toBeInTheDocument()
+	);
+	expect(screen.queryByRole('region', { name: 'Compare picks' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('table')).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Make my picks' })).not.toBeInTheDocument();
 });

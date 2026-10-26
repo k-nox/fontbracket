@@ -19,7 +19,7 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content={light ? '#f7f0ed' : '#1b1725'} />
+	<meta name="theme-color" content={light ? '#f5f0ff' : '#241a35'} />
 	<script>
 		(() => {
 			let mode;
@@ -37,7 +37,8 @@
 	<header class="site-header">
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Compatible with pinned SvelteKit 2.20. -->
 		<a href="/" class="brand"
-			><span class="brand-icon" aria-hidden="true">⌘</span> Bracket<span class="brand-dot">.</span
+			><span class="brand-icon" aria-hidden="true">🥒</span><span class="brand-name"
+				>knox’s super cool bracket maker</span
 			></a
 		>
 		<div class="header-actions">

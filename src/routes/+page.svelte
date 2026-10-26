@@ -203,7 +203,7 @@
 
 	async function nativeShare() {
 		try {
-			await navigator.share({ title: 'Bracket', url: shareLink });
+			await navigator.share({ title: 'knox’s super cool bracket maker', url: shareLink });
 		} catch (cause) {
 			if (!(cause instanceof Error && cause.name === 'AbortError')) notice = 'Copy the link below.';
 		}
@@ -211,12 +211,12 @@
 </script>
 
 <svelte:head>
-	<title>Bracket</title>
+	<title>knox’s super cool bracket maker</title>
 	<meta name="description" content="Create and share a bracket." />
 </svelte:head>
 
 <div class="workspace" class:playing={!!bracket}>
-	<div class="intro"><h1>Create a bracket</h1></div>
+	<div class="intro"><h1>make a bracket</h1></div>
 	<details class="entry-panel" open={!session}>
 		<summary
 			><span>{session ? 'Edit items' : 'Items'}</span><span class="item-count"
@@ -279,9 +279,7 @@
 						/>
 						<button class="primary-button" type="submit">Make my picks</button>
 					</form>
-				{:else}<p class="help-text">
-						This bracket has four people. You can view their results below.
-					</p>{/if}
+				{:else}<p class="help-text">This bracket already has four people.</p>{/if}
 				<div class="share-actions">
 					<button
 						class="secondary-button"
@@ -337,6 +335,13 @@
 				<p class="help-text tournament-help">Changing a pick resets affected results.</p>
 			</section>
 		{/if}
-		{#if session.players.length > 1 || !player}{#key session.id}<Comparison {session} />{/key}{/if}
+		{#if session.players.length > 1 || !player}
+			{#if player && champion}{#key session.id}<Comparison {session} />{/key}
+			{:else}<section class="locked-results" aria-label="Locked results">
+					<span class="lock-icon" aria-hidden="true">🔒</span>
+					<h2>friends’ picks are locked</h2>
+					<p>Finish your bracket to unlock the table and full brackets.</p>
+				</section>{/if}
+		{/if}
 	{/if}
 </div>
