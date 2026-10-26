@@ -9,6 +9,7 @@
 		createSession,
 		decodeSession,
 		encodeSession,
+		finalizeSession,
 		MAX_PLAYERS,
 		mergeSessions,
 		restoreBracket,
@@ -40,6 +41,9 @@
 		return bracket?.winner;
 	});
 	const labels = $derived(parseItems(input));
+	const finishedCount = $derived(
+		session?.players.filter((person) => person.picks.at(-1) != null).length ?? 0
+	);
 	const message = (cause: unknown) =>
 		cause instanceof Error ? cause.message : 'Unable to open bracket.';
 
@@ -136,7 +140,7 @@
 	}
 
 	function choose(round: number, match: number, itemId: string) {
-		if (!bracket || !session || !activeId) return;
+		if (!bracket || !session || !activeId || session.complete) return;
 		bracket.choose(round, match, itemId);
 		session = {
 			...session,
@@ -152,7 +156,7 @@
 	}
 
 	function rename(name: string) {
-		if (!session || !activeId || !name.trim()) return;
+		if (!session || !activeId || !name.trim() || session.complete) return;
 		session = {
 			...session,
 			players: session.players.map((person) =>
@@ -195,9 +199,26 @@
 	async function copyLink() {
 		try {
 			await navigator.clipboard.writeText(shareLink);
-			notice = 'Link copied.';
+			notice = session?.complete ? 'Final results link copied.' : 'Link copied.';
 		} catch {
 			notice = 'Copy the link below.';
+		}
+	}
+
+	async function completeGroup() {
+		if (!session || !player || session.complete) return;
+		const previous = session;
+		try {
+			session = finalizeSession(session);
+			await saveUrl();
+			if (!session || session.id !== previous.id || !session.complete) return;
+			if (shareError) {
+				session = previous;
+				return;
+			}
+			await copyLink();
+		} catch (cause) {
+			shareError = message(cause);
 		}
 	}
 
@@ -250,14 +271,15 @@
 	{#if loading}<p role="status">Loading bracket…</p>{/if}
 	{#if error}<p role="alert" class="error">{error}</p>{/if}
 	{#if session}
-		<details class="sharing" open={!player}>
+		<details class="sharing" open={!player || session.complete}>
 			<summary
 				><span>Share &amp; compare</span><span class="item-count"
 					>{session.players.length}/{MAX_PLAYERS} people</span
 				></summary
 			>
 			<div class="sharing-content">
-				{#if player}
+				{#if session.complete}<p class="help-text">Final results are read-only.</p>
+				{:else if player}
 					<label class="name-label" for="player-name">Your name</label>
 					<input
 						id="player-name"
@@ -302,23 +324,42 @@
 						readonly
 						value={encoding ? 'Updating link…' : shareLink}
 						onfocus={(event) => event.currentTarget.select()}></textarea>
-					<form class="import-form" onsubmit={combine}>
-						<label class="name-label" for="returned-link">Paste a friend's result link</label>
-						<textarea id="returned-link" class="link-input" bind:value={importLink} required
-						></textarea>
-						<button class="secondary-button" type="submit">Combine results</button>
-					</form>
+					{#if !session.complete}<form class="import-form" onsubmit={combine}>
+							<label class="name-label" for="returned-link">Paste a friend's result link</label>
+							<textarea id="returned-link" class="link-input" bind:value={importLink} required
+							></textarea>
+							<button class="secondary-button" type="submit">Combine results</button>
+						</form>{/if}
 				</details>
-				<p class="help-text">
-					Send your link. Friends make their picks and send a link back. Paste returned links to
-					compare up to four people. Links are snapshots; send a new one after changes.
-				</p>
+				{#if !session.complete}<p class="help-text">
+						Send your link. Friends make their picks and return a link. Paste returned links to
+						compare up to four people.
+					</p>{/if}
 				<p class="help-text">Results stay in the link and your browser. No server storage.</p>
 				{#if notice}<p role="status" class="help-text">{notice}</p>{/if}
 				{#if shareError}<p role="alert" class="error">{shareError}</p>{/if}
 			</div>
 		</details>
-		{#if bracket}
+		{#if session.complete}
+			<section class="completion-panel" aria-label="Final results">
+				<h2>complete ✓</h2>
+				<p>All results unlocked. Send this link to everyone.</p>
+				<div class="share-actions">
+					<button
+						class="primary-button"
+						type="button"
+						disabled={encoding || !shareLink}
+						onclick={copyLink}>Copy final results link</button
+					>{#if canShare}<button
+							class="secondary-button"
+							type="button"
+							disabled={encoding || !shareLink}
+							onclick={nativeShare}>Share final results</button
+						>{/if}
+				</div>
+			</section>
+		{/if}
+		{#if bracket && !session.complete}
 			<section class="tournament" aria-label="Your tournament">
 				<div class="tournament-title">
 					<h2>Your picks</h2>
@@ -331,10 +372,22 @@
 				</div>
 				{#key generation}<Bracket {bracket} {revision} onchoose={choose} />{/key}
 				<p class="help-text tournament-help">Changing a pick resets affected results.</p>
+				<section class="completion-panel" aria-label="Complete bracket">
+					<p>{finishedCount}/{session.players.length} people finished.</p>
+					<button
+						class="primary-button"
+						type="button"
+						disabled={encoding || finishedCount !== session.players.length}
+						onclick={completeGroup}>Mark complete &amp; share results</button
+					>
+					<p class="help-text">
+						Unlocks results for everyone in a read-only link. Import all results first.
+					</p>
+				</section>
 			</section>
 		{/if}
-		{#if session.players.length > 1 || !player}
-			{#if player && champion}{#key session.id}<Comparison {session} />{/key}
+		{#if session.complete || session.players.length > 1 || !player}
+			{#if session.complete || (player && champion)}{#key session.id}<Comparison {session} />{/key}
 			{:else}<section class="locked-results" aria-label="Locked results">
 					<span class="lock-icon" aria-hidden="true">🔒</span>
 					<h2>friends’ picks are locked</h2>

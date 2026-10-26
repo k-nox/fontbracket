@@ -70,3 +70,16 @@ path, with zoom and scrolling for larger brackets.
 ## Toolchain
 
 Use Node.js 24 or newer and pnpm 10.8. The app uses SvelteKit 3, Vite 8, Vitest 5, ESLint 10, and TypeScript 6. TypeScript 6 is the newest version supported by SvelteKit and typescript-eslint; Node types follow the Node 24 runtime. SvelteKit configuration now lives in `vite.config.ts`, and library imports use the `#lib` package subpath. The 54 unused font packages and seven legacy font-comparison libraries were removed; the bundled comic-font fallback is unchanged.
+
+## Final results
+
+After all included participants finish, any participant can choose **Mark complete
+& share results**. It creates a final read-only snapshot and copies the link when
+clipboard access is available; a manual copy/share button remains available.
+Everyone opening that final link can view all comparison tables and full bracket
+diagrams without joining or making picks. The completion flag is stored in the
+URL alongside the results. Unfinished groups cannot be finalized, and final links
+do not allow joining, editing picks/names, or importing more results. Creating a
+new bracket starts a separate session. Old links remain compatible and keep the
+normal spoiler lock. Returned final links only finalize a merge if all participant
+snapshots match, so a stale link cannot unlock unfinished local picks.

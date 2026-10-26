@@ -7,6 +7,7 @@ import {
 	createSession,
 	decodeSession,
 	encodeSession,
+	finalizeSession,
 	mergeSessions,
 	restoreBracket,
 	validateSession
@@ -140,4 +141,37 @@ describe('URL brackets', () => {
 		expect(hash.length).toBeLessThan(60000);
 		expect(await decodeSession(hash)).toEqual(session);
 	});
+});
+
+it('finalizes a complete group, preserves the flag in links, and blocks further editing', async () => {
+	let session = snapshot(4);
+	session = addPlayer(session, 'Sam').session;
+	session.players[1].picks = capturePicks(finish(new BracketStore(session.movies, false), 1));
+	const final = finalizeSession(session);
+	expect(final.complete).toBe(true);
+	expect(session.complete).toBeUndefined();
+	expect(await decodeSession(await encodeSession(final))).toEqual(final);
+	expect(() => addPlayer(final, 'Jo')).toThrow('read-only');
+	expect(() => mergeSessions(final, session, final.players[0].id)).toThrow('read-only');
+});
+
+it('does not allow unfinished or malformed groups to claim final results', () => {
+	const partial = createSession(new BracketStore(['A', 'B'], false));
+	expect(() => finalizeSession(partial)).toThrow('Everyone');
+	expect(() => validateSession({ ...partial, complete: true })).toThrow();
+	expect(() => validateSession({ ...snapshot(), complete: 'yes' })).toThrow();
+	const joined = addPlayer(snapshot(), 'Sam').session;
+	expect(() => finalizeSession(joined)).toThrow('Everyone');
+});
+
+it('only adopts a returned final flag if every merged result matches the final snapshot', () => {
+	const current = createSession(new BracketStore(['A', 'B'], false));
+	const returned = addPlayer(current, 'Sam').session;
+	returned.players = returned.players.map((person) => ({ ...person, revision: 1, picks: [0] }));
+	const final = finalizeSession(returned);
+	const merged = mergeSessions(current, final, current.players[0].id);
+	expect(merged.players[0].picks).toEqual([null]);
+	expect(merged.complete).not.toBe(true);
+	const finishedOwn = { ...current, players: [returned.players[0]] };
+	expect(mergeSessions(finishedOwn, final, current.players[0].id).complete).toBe(true);
 });

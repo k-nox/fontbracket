@@ -167,3 +167,51 @@ test('does not let an unjoined visitor see results of a full four-person group',
 	expect(screen.queryByRole('table')).not.toBeInTheDocument();
 	expect(screen.queryByRole('button', { name: 'Make my picks' })).not.toBeInTheDocument();
 });
+
+test('marks a finished four-person group complete and unlocks final results for a fresh viewer', async () => {
+	const own = new BracketStore(['A', 'B'], false);
+	own.choose(0, 0, own.items[0].id);
+	let session = createSession(own);
+	for (const name of ['Sam', 'Lee', 'Jo']) session = addPlayer(session, name).session;
+	session.players = session.players.map((person, index) => ({ ...person, picks: [index % 2] }));
+	localStorage.setItem(`final-cut-player:${session.id}`, session.players[0].id);
+	window.history.replaceState({}, '', await encodeSession(session));
+	const owner = render(Page);
+	const finishButton = await screen.findByRole('button', { name: 'Mark complete & share results' });
+	await waitFor(() => expect(finishButton).toBeEnabled());
+	await fireEvent.click(finishButton);
+	await waitFor(() =>
+		expect(screen.getByRole('button', { name: 'Copy final results link' })).toBeEnabled()
+	);
+	const finalLink = (screen.getByLabelText('Bracket link') as HTMLTextAreaElement).value;
+	expect((await decodeSession(finalLink)).complete).toBe(true);
+	expect(screen.queryByRole('region', { name: 'Your tournament' })).not.toBeInTheDocument();
+	owner.unmount();
+
+	localStorage.clear();
+	window.history.replaceState({}, '', finalLink);
+	render(Page);
+	await waitFor(() =>
+		expect(screen.getByRole('region', { name: 'Final results' })).toBeInTheDocument()
+	);
+	expect(screen.queryByRole('region', { name: 'Locked results' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Make my picks' })).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Combine results' })).not.toBeInTheDocument();
+	expect(screen.queryByLabelText('Your name')).not.toBeInTheDocument();
+	expect(screen.getAllByRole('columnheader')).toHaveLength(5);
+	await fireEvent.click(screen.getByRole('button', { name: 'Brackets' }));
+	await fireEvent.change(screen.getByLabelText('Whose bracket'), { target: { value: '3' } });
+	expect(screen.getByRole('img', { name: "Jo's full bracket" })).toBeInTheDocument();
+});
+
+test('keeps group completion disabled while another participant is unfinished', async () => {
+	const own = new BracketStore(['A', 'B'], false);
+	own.choose(0, 0, own.items[0].id);
+	const session = addPlayer(createSession(own), 'Sam').session;
+	localStorage.setItem(`final-cut-player:${session.id}`, session.players[0].id);
+	window.history.replaceState({}, '', await encodeSession(session));
+	render(Page);
+	const button = await screen.findByRole('button', { name: 'Mark complete & share results' });
+	expect(button).toBeDisabled();
+	expect(screen.getByText('1/2 people finished.')).toBeInTheDocument();
+});

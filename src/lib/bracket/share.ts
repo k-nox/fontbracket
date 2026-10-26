@@ -12,6 +12,7 @@ export interface SharedBracket {
 	id: string;
 	movies: string[];
 	players: Player[];
+	complete?: boolean;
 }
 
 export const MAX_PLAYERS = 4;
@@ -57,6 +58,7 @@ export function validateSession(value: unknown): SharedBracket {
 	const validId = (id: unknown): id is string => typeof id === 'string' && /^[\w-]{1,64}$/.test(id);
 	if (
 		session.v !== 1 ||
+		(session.complete !== undefined && typeof session.complete !== 'boolean') ||
 		!validId(session.id) ||
 		!Array.isArray(session.movies) ||
 		session.movies.length < 2 ||
@@ -85,6 +87,7 @@ export function validateSession(value: unknown): SharedBracket {
 			throw invalid();
 		ids.add(player.id);
 		const bracket = restoreBracket(session.movies, player.picks);
+		if (session.complete && !bracket.winner) throw invalid();
 		return {
 			id: player.id,
 			name: player.name.trim(),
@@ -92,7 +95,13 @@ export function validateSession(value: unknown): SharedBracket {
 			picks: capturePicks(bracket)
 		};
 	});
-	return { v: 1, id: session.id, movies: [...session.movies], players };
+	return {
+		v: 1,
+		id: session.id,
+		movies: [...session.movies],
+		players,
+		...(session.complete ? { complete: true } : {})
+	};
 }
 
 export function createSession(bracket: BracketStore): SharedBracket {
@@ -115,6 +124,8 @@ export function addPlayer(
 	session: SharedBracket,
 	name: string
 ): { session: SharedBracket; player: Player } {
+	if (session.complete)
+		throw new Error('Final results are read-only. Start a new bracket to make picks.');
 	if (session.players.length >= MAX_PLAYERS)
 		throw new Error('This bracket already has four people.');
 	if (!name.trim() || name.length > 40) throw new Error('Enter a name (up to 40 characters).');
@@ -133,6 +144,7 @@ export function mergeSessions(
 	incoming: SharedBracket,
 	ownId: string | null
 ): SharedBracket {
+	if (current.complete) throw new Error('Final results are read-only.');
 	if (
 		current.id !== incoming.id ||
 		JSON.stringify(current.movies) !== JSON.stringify(incoming.movies)
@@ -154,7 +166,24 @@ export function mergeSessions(
 		}
 	}
 	if (players.length > MAX_PLAYERS) throw new Error('You can compare up to four people.');
-	return { ...current, players };
+	const complete =
+		incoming.complete &&
+		incoming.players.length === players.length &&
+		players.every((player) =>
+			incoming.players.some(
+				(incomingPlayer) => JSON.stringify(incomingPlayer) === JSON.stringify(player)
+			)
+		);
+	return { ...current, players, ...(complete ? { complete: true } : {}) };
+}
+
+/** Explicitly finalize this snapshot; future viewers can see all results without joining. */
+export function finalizeSession(session: SharedBracket): SharedBracket {
+	const validated = validateSession(session);
+	if (!validated.players.every((player) => restoreBracket(validated.movies, player.picks).winner)) {
+		throw new Error('Everyone in this group must finish before you mark it complete.');
+	}
+	return { ...validated, complete: true };
 }
 
 async function readBounded(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {

@@ -1064,3 +1064,28 @@ h1 {
 		margin-bottom: 24px;
 	}
 }
+
+.completion-panel {
+	margin-top: 24px;
+	padding: 20px;
+	border: 2px solid var(--champ-line);
+	border-radius: 16px;
+	background: var(--champ-bg);
+	color: var(--winner-text);
+}
+.completion-panel h2 {
+	font-size: 25px;
+	font-weight: 700;
+}
+.completion-panel > p {
+	margin: 8px 0 12px;
+	font-size: 14px;
+}
+.completion-panel .help-text {
+	color: var(--winner-text);
+	font-size: 12px;
+}
+.completion-panel button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
