@@ -1,6 +1,6 @@
 <script lang="ts">
 	import BracketGraphic from './BracketGraphic.svelte';
-	import { agreement, restoreBracket, type SharedBracket } from '$lib/bracket/share';
+	import { agreement, restoreBracket, type SharedBracket } from '#lib/bracket/share.ts';
 	let { session }: { session: SharedBracket } = $props();
 	let round = $state(0);
 	let view = $state<'table' | 'brackets'>('table');

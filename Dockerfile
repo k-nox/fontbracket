@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Adjust NODE_VERSION as desired
-ARG NODE_VERSION=22.14.0
+ARG NODE_VERSION=24.19.0
 FROM node:${NODE_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="SvelteKit"
@@ -49,3 +49,4 @@ COPY --from=build /app/package.json /app
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 3000
 CMD [ "node", "./build/index.js" ]
+

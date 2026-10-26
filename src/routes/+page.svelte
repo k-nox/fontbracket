@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Bracket from '$lib/components/Bracket/Bracket.svelte';
-	import Comparison from '$lib/components/Bracket/Comparison.svelte';
-	import { BracketStore, MAX_ITEMS, parseItems } from '$lib/bracket/bracket';
+	import Bracket from '#lib/components/Bracket/Bracket.svelte';
+	import Comparison from '#lib/components/Bracket/Comparison.svelte';
+	import { BracketStore, MAX_ITEMS, parseItems } from '#lib/bracket/bracket.ts';
 	import {
 		addPlayer,
 		capturePicks,
@@ -13,7 +13,7 @@
 		mergeSessions,
 		restoreBracket,
 		type SharedBracket
-	} from '$lib/bracket/share';
+	} from '#lib/bracket/share.ts';
 
 	let input = $state('');
 	let randomize = $state(true);
@@ -230,8 +230,7 @@
 				bind:value={input}
 				placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
 				aria-describedby="items-help"
-				required
-			></textarea>
+				required></textarea>
 			<p id="items-help" class="help-text">
 				2–{MAX_ITEMS} items.
 			</p>
@@ -302,8 +301,7 @@
 						class="link-input"
 						readonly
 						value={encoding ? 'Updating link…' : shareLink}
-						onfocus={(event) => event.currentTarget.select()}
-					></textarea>
+						onfocus={(event) => event.currentTarget.select()}></textarea>
 					<form class="import-form" onsubmit={combine}>
 						<label class="name-label" for="returned-link">Paste a friend's result link</label>
 						<textarea id="returned-link" class="link-input" bind:value={importLink} required

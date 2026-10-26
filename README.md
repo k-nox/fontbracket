@@ -66,3 +66,7 @@ contains all participant snapshots and can be decoded outside the app.
 Once unlocked, switch between the table and a read-only full-bracket diagram for
 any participant. Diagrams show match connections and highlight the champion’s
 path, with zoom and scrolling for larger brackets.
+
+## Toolchain
+
+Use Node.js 24 or newer and pnpm 10.8. The app uses SvelteKit 3, Vite 8, Vitest 5, ESLint 10, and TypeScript 6. TypeScript 6 is the newest version supported by SvelteKit and typescript-eslint; Node types follow the Node 24 runtime. SvelteKit configuration now lives in `vite.config.ts`, and library imports use the `#lib` package subpath. The 54 unused font packages and seven legacy font-comparison libraries were removed; the bundled comic-font fallback is unchanged.

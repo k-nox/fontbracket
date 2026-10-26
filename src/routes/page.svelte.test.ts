@@ -7,8 +7,8 @@ import {
 	createSession,
 	decodeSession,
 	encodeSession
-} from '$lib/bracket/share';
-import { BracketStore } from '$lib/bracket/bracket';
+} from '#lib/bracket/share.ts';
+import { BracketStore } from '#lib/bracket/bracket.ts';
 import Page from './+page.svelte';
 
 beforeEach(() => {

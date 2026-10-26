@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BracketStore } from '$lib/bracket/bracket';
+	import type { BracketStore } from '#lib/bracket/bracket.ts';
 
 	interface Props {
 		bracket: BracketStore;

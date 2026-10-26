@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	let light = $state(false);
 	onMount(() => {
 		light = document.documentElement.dataset.appearance === 'light';
@@ -35,8 +36,7 @@
 
 <div class="app-shell">
 	<header class="site-header">
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Compatible with pinned SvelteKit 2.20. -->
-		<a href="/" class="brand"
+		<a href={resolve('/')} class="brand"
 			><span class="brand-icon" aria-hidden="true">🥒</span><span class="brand-name"
 				>knox’s super cool bracket maker</span
 			></a

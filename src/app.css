@@ -435,7 +435,7 @@ h3 {
 .contestant + .contestant {
 	border-top: 1px solid var(--line);
 }
-.contestant:enabled:hover {
+.contestant:enabled:hover:not(.winner) {
 	background: var(--raised);
 }
 .slot-number {
@@ -897,12 +897,6 @@ h1 {
 .match {
 	border-width: 2px;
 	border-radius: 16px 12px 18px 13px;
-}
-.match:nth-child(3n + 2) {
-	border-color: var(--peach);
-}
-.match:nth-child(3n) {
-	border-color: var(--focus);
 }
 .person-card {
 	border-width: 2px;

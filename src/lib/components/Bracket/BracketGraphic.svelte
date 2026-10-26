@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BracketStore } from '$lib/bracket/bracket';
+	import type { BracketStore } from '#lib/bracket/bracket.ts';
 	let { bracket, name }: { bracket: BracketStore; name: string } = $props();
 	let zoom = $state(1);
 	const column = 256;
